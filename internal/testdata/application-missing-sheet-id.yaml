@@ -1,0 +1,7 @@
+google:
+  application_credentials: credentials/service-account.json
+  sheet_range: notification!B2:D
+twilio:
+  account_sid: AC123test
+  auth_token: test-auth-token
+  whatsapp_from: "whatsapp:+14155238886"

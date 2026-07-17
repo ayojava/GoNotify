@@ -1,0 +1,23 @@
+# Config folder (contains sensitive credentials)
+secrets/
+
+# JSON files (service account credentials, etc)
+*.json
+
+!go.sum
+
+# IDE
+.idea/
+.vscode/
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+
+# Go
+bin/
+dist/
