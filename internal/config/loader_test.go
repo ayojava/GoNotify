@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const testConfigPath = "../testdata/application.yaml"
+const testConfigPath = "../testdata/nonexistent-application.yaml"
 
 func resetViper(t *testing.T) {
 	t.Helper()

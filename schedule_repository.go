@@ -35,7 +35,7 @@ func (r *GoogleSheetsRepository) parseRows(rows [][]interface{}) []Session {
 	var sessions []Session
 
 	for i, row := range rows {
-		if len(row) < 3 {
+		if len(row) < 4 {
 			fmt.Printf("Skipping malformed row %d: %v\n", i+1, row)
 			continue
 		}
@@ -48,6 +48,7 @@ func (r *GoogleSheetsRepository) parseRows(rows [][]interface{}) []Session {
 		name := strings.TrimSpace(fmt.Sprintf("%v", row[0]))
 		phone := strings.TrimSpace(fmt.Sprintf("%v", row[1]))
 		dateStr := strings.TrimSpace(fmt.Sprintf("%v", row[2]))
+		timeStr := strings.TrimSpace(fmt.Sprintf("%v", row[3]))
 
 		date, err := time.Parse(time.DateOnly, dateStr)
 		if err != nil {
@@ -60,6 +61,7 @@ func (r *GoogleSheetsRepository) parseRows(rows [][]interface{}) []Session {
 			Name:  name,
 			Phone: phone,
 			Date:  date,
+			Time:  timeStr,
 		})
 	}
 

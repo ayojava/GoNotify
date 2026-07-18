@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -16,11 +17,35 @@ func Load(configPath string) (*Config, error) {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
+	// AutomaticEnv only overrides keys Viper already knows about — normally
+	// learned from the config file. When the file is absent (the CI case
+	// this function is designed for), Viper has no keys to check env vars
+	// against and Unmarshal silently comes back empty, so each key must be
+	// bound explicitly to guarantee env vars are picked up either way.
+	for _, key := range []string{
+		"google.application_credentials",
+		"google.sheet_id",
+		"google.sheet_range",
+		"twilio.account_sid",
+		"twilio.auth_token",
+		"twilio.whatsapp_from",
+	} {
+		if err := viper.BindEnv(key); err != nil {
+			return nil, fmt.Errorf("binding env var for %s: %w", key, err)
+		}
+	}
+
 	// The secret file is optional — in CI (GitHub Actions) there is no
 	// application.yaml, only env vars from secrets. Only fail if
 	// the file exists but is malformed.
+	//
+	// Note: viper.ConfigFileNotFoundError is only returned when Viper
+	// searches for a config by name; since we set an explicit path via
+	// SetConfigFile, a missing file instead surfaces as a raw *fs.PathError,
+	// so we also need to check os.IsNotExist directly.
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		_, isViperNotFound := err.(viper.ConfigFileNotFoundError)
+		if !isViperNotFound && !os.IsNotExist(err) {
 			return nil, fmt.Errorf("reading secret file: %w", err)
 		}
 	}

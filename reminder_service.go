@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -50,10 +51,5 @@ func (svc *ReminderService) Run(now time.Time) (int, error) {
 }
 
 func (svc *ReminderService) isReminderDay(daysUntil int) bool {
-	for _, d := range svc.ReminderDays {
-		if daysUntil == d {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(svc.ReminderDays, daysUntil)
 }

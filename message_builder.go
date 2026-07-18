@@ -17,13 +17,13 @@ func (b *ReminderMessageBuilder) Build(s Session, daysUntil int) string {
 
 	if daysUntil == 0 {
 		return fmt.Sprintf(
-			"Hi %s! 🙏 Just a reminder that you're leading TODAY's session (%s). Wishing you a great session!",
-			s.Name, dateStr,
+			"Hi %s! 🙏 A reminder that you're leading TODAY's (%s) Prayer session from (%s). ",
+			s.Name, dateStr, s.Time,
 		)
 	}
 
 	return fmt.Sprintf(
-		"Hi %s! 🙏 Reminder that you're leading the session on %s (in %d day(s)). Please prepare and let us know if you can't make it.",
+		"Hi %s! 🙏 Reminder that you're leading the prayer session on %s (in %d day(s)).Incase you cant make it, kindly swap with someone and inform prayer department.",
 		s.Name, dateStr, daysUntil,
 	)
 }

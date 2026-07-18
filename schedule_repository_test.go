@@ -9,9 +9,9 @@ func TestGoogleSheetsRepository_parseRows(t *testing.T) {
 
 	t.Run("well-formed rows parse correctly", func(t *testing.T) {
 		rows := [][]interface{}{
-			{"  Name  ", " Phone ", " Date "},
-			{"John Doe", "+254712345678", "2026-07-20"},
-			{"Jane Smith", "+254798765432", "2026-07-27"},
+			{"  Name  ", " Phone ", " Date ", " Time "},
+			{"John Doe", "+254712345678", "2026-07-20", "18:00"},
+			{"Jane Smith", "+254798765432", "2026-07-27", "18:00"},
 		}
 
 		sessions := repo.parseRows(rows)
@@ -22,12 +22,15 @@ func TestGoogleSheetsRepository_parseRows(t *testing.T) {
 		if sessions[0].Name != "John Doe" || sessions[0].Phone != "+254712345678" {
 			t.Errorf("unexpected first session: %+v", sessions[0])
 		}
+		if sessions[0].Time != "18:00" {
+			t.Errorf("expected time to be parsed, got %q", sessions[0].Time)
+		}
 	})
 
 	t.Run("row with too few columns is skipped, not fatal", func(t *testing.T) {
 		rows := [][]interface{}{
-			{"John Doe", "+254712345678"}, // missing date
-			{"Jane Smith", "+254798765432", "2026-07-27"},
+			{"John Doe", "+254712345678", "2026-07-20"}, // missing time
+			{"Jane Smith", "+254798765432", "2026-07-27", "18:00"},
 		}
 
 		sessions := repo.parseRows(rows)
@@ -42,8 +45,8 @@ func TestGoogleSheetsRepository_parseRows(t *testing.T) {
 
 	t.Run("row with invalid date is skipped, not fatal", func(t *testing.T) {
 		rows := [][]interface{}{
-			{"John Doe", "+254712345678", "not-a-date"},
-			{"Jane Smith", "+254798765432", "2026-07-27"},
+			{"John Doe", "+254712345678", "not-a-date", "18:00"},
+			{"Jane Smith", "+254798765432", "2026-07-27", "18:00"},
 		}
 
 		sessions := repo.parseRows(rows)
@@ -63,8 +66,8 @@ func TestGoogleSheetsRepository_parseRows(t *testing.T) {
 
 	t.Run("whitespace in fields is trimmed", func(t *testing.T) {
 		rows := [][]interface{}{
-			{"  Name  ", " Phone ", " Date "},
-			{"  John Doe  ", " +254712345678 ", " 2026-07-20 "},
+			{"  Name  ", " Phone ", " Date ", " Time "},
+			{"  John Doe  ", " +254712345678 ", " 2026-07-20 ", " 18:00 "},
 		}
 
 		sessions := repo.parseRows(rows)

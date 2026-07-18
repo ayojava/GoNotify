@@ -33,7 +33,6 @@ func NewTwilioNotifier(accountSID, authToken, fromNumber string) *TwilioNotifier
 
 func (t *TwilioNotifier) Send(to, body string) error {
 	params := &openapi.CreateMessageParams{}
-	//params.SetTo("whatsapp:" + to)
 	params.SetTo(to)
 	params.SetFrom(t.FromNumber)
 	params.SetBody(body)

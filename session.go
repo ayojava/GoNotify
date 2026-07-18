@@ -6,6 +6,7 @@ type Session struct {
 	Name  string
 	Phone string
 	Date  time.Time
+	Time  string
 }
 
 func (s Session) DaysUntil(from time.Time) int {
