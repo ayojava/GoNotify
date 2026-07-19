@@ -82,11 +82,12 @@ should extend those fakes rather than introducing a mocking library.
 
 ## CI
 
-GitHub Actions workflows does the following (build/test, materialize the service account
-JSON from a base64 secret, run the script, clean up the credentials file) but on different triggers:
+A single workflow, `.github/workflows/go.yml`, handles both CI and the production reminder trigger.
+It runs on push/PR to `master`, on a daily cron (`0 7 * * *`), and on manual `workflow_dispatch`.
+`go build`/`go test` run on every trigger, but the credential-writing and `go run .` steps (which
+sends real WhatsApp messages) are gated with `if: github.event_name == 'schedule' ||
+github.event_name == 'workflow_dispatch'`, so push/PR runs only build and test — they never send
+real messages.
 
-- `.github/workflows/go.yml` — on push/PR to `master`, includes the `go build`/`go test` steps.
-  this is the actual production trigger for sending reminders, and skips the build/test steps.
-
-Both expect these repo secrets: `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`, `GOOGLE_SHEET_ID`,
+Expects these repo secrets: `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`, `GOOGLE_SHEET_ID`,
 `GOOGLE_SHEET_RANGE`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.

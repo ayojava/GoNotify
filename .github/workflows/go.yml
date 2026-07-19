@@ -8,6 +8,9 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
 
 jobs:
 
@@ -33,12 +36,14 @@ jobs:
       run: go build -v ./...
 
     - name: Write Google service account credentials
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 -d > service_account.json
 
     - name: Test
       run: go test -v ./...
 
     - name: Run reminder script
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       env:
         GOOGLE_APPLICATION_CREDENTIALS: service_account.json
         GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
