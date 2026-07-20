@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GoNotify reads a session schedule from a Google Sheet and sends WhatsApp reminders (via Twilio) to
 whoever is leading each upcoming session. It's a single-shot CLI (`go run .`), not a long-running
-service — it's meant to be invoked once per day by a scheduled job.
+service — it's meant to be invoked once per day by a scheduled job. In production that job is a
+Google Cloud Run Job triggered by Cloud Scheduler (see "Production deployment" below), not GitHub
+Actions — GitHub's `schedule` cron trigger was tried first but is only best-effort and was
+observed to skip its scheduled run entirely, which isn't acceptable for a time-sensitive reminder.
 
 ## Commands
 
@@ -82,12 +85,40 @@ should extend those fakes rather than introducing a mocking library.
 
 ## CI
 
-A single workflow, `.github/workflows/go.yml`, handles both CI and the production reminder trigger.
-It runs on push/PR to `master`, on a daily cron (`0 7 * * *`), and on manual `workflow_dispatch`.
-`go build`/`go test` run on every trigger, but the credential-writing and `go run .` steps (which
-sends real WhatsApp messages) are gated with `if: github.event_name == 'schedule' ||
-github.event_name == 'workflow_dispatch'`, so push/PR runs only build and test — they never send
-real messages.
+`.github/workflows/go.yml` is CI-only: `go build`/`go test` on every push/PR to `master`. It does
+not send real messages and does not run on any schedule — production execution lives entirely in
+GCP (below). The `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64` / `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_RANGE` /
+`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` GitHub repo secrets from the
+old setup are no longer used by Actions and can be removed if desired.
 
-Expects these repo secrets: `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`, `GOOGLE_SHEET_ID`,
-`GOOGLE_SHEET_RANGE`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.
+## Production deployment
+
+The daily reminder send runs as a **Google Cloud Run Job** (`gonotify-reminder`, project
+`bolu-286408`, region `europe-west1`), triggered once a day at 07:00 UTC by **Google Cloud
+Scheduler** (`gonotify-daily-trigger`), which calls the Cloud Run Jobs API directly — no GitHub
+Actions involved. Cloud Run Jobs was chosen because this app is a run-to-completion CLI, not a
+server, so no HTTP wrapper is needed; the container's entrypoint is just the existing binary
+unchanged.
+
+Config maps to the container the same way it does in CI: env vars only (no `application.yaml` in
+the image). `GOOGLE_SHEET_ID`, `GOOGLE_SHEET_RANGE`, and `TWILIO_WHATSAPP_FROM` are plain env vars;
+`TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` come from Secret Manager via `--set-secrets`; the
+Google service account JSON is also a Secret Manager secret, mounted as a file at
+`/secrets/service-account.json`, with `GOOGLE_APPLICATION_CREDENTIALS` pointed at that path — so
+`schedule_repository.go`'s file-based credential loading needs no code change to work in Cloud Run.
+
+The job runs with `--max-retries=0` deliberately: `ReminderService.Run` has no send-deduplication,
+so a Cloud Run retry after a partial failure would re-send WhatsApp messages to people already
+notified. A failed run just fails and is retried by the next day's schedule instead.
+
+- `Dockerfile` — multi-stage build (`golang:1.26-bookworm` → `gcr.io/distroless/static-debian12`).
+- `deploy/setup.sh` — one-time GCP provisioning: enables APIs, creates the Artifact Registry repo,
+  Secret Manager secrets (sourced from local `secrets/application.yaml` /
+  `secrets/service_account.json`), and the two service accounts (job runtime + scheduler invoker).
+  Safe to re-run.
+- `deploy/deploy.sh` — run after any code change to ship it: builds/pushes the image, deploys the
+  Cloud Run Job, and (re)creates the Cloud Scheduler trigger. There is no auto-deploy from GitHub
+  on push — deploying is a deliberate manual step for now.
+
+To manually trigger a run without waiting for the schedule:
+`gcloud run jobs execute gonotify-reminder --region europe-west1 --project bolu-286408`.

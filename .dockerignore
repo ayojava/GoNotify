@@ -1,0 +1,10 @@
+secrets/
+.git/
+.github/
+.idea/
+.vscode/
+deploy/
+*.md
+*_test.go
+bin/
+dist/
